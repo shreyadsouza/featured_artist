@@ -1,0 +1,2 @@
+freddie.wav
+silence.wav
