@@ -1,2 +1,2 @@
-sza.wav
-silence.wav
+data/to-extract/sza.wav
+data/to-extract/silence.wav

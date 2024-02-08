@@ -1,2 +1,2 @@
-yeet.wav
-silence.wav
+data/to-extract/yeet.wav
+data/to-extract/silence.wav

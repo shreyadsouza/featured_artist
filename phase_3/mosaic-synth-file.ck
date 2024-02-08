@@ -9,18 +9,71 @@
 //          Yikai Li
 //------------------------------------------------------------------------------
 
-// input: pre-extracted model file
+Hid hi;
+HidMsg msg;
+
+
 string FEATURES_FILE;
-if( me.args() > 0 )
-{
-    me.arg(0) => FEATURES_FILE;
-}
-else
-{
-    // print usage
-    <<< "usage: chuck mosaic-synth-doh.ck:INPUT", "" >>>;
-    <<< " |- INPUT: model file (.txt) containing extracted feature vectors", "" >>>;
-}
+1 => int NUM_SOUNDS;
+
+// which keyboard
+// 2 => int device;
+1 => int device;
+
+// get from command line
+
+// open keyboard (get device number from command line)
+if( !hi.openKeyboard( device ) ) me.exit();
+<<< "keyboard '" + hi.name() + "' ready", "" >>>;
+
+
+ConsoleInput in;
+StringTokenizer tok;
+string line[0];
+
+in.prompt( "CHOOSE FEATURES FILE:
+            [1]: Big Boys — SNL
+            [2]: Rap Roundtable — SNL
+            [3]: Whitney Houston — I Will Always Love You
+            [4]: Queen — Bohemian Rhapsody
+            [5]: Iggy Azalea — Fancy ft. Charli XCX
+            [6]: Beyoncé — Single Ladies (Put a Ring on It)
+            ") => now;
+    // read
+    while( in.more() )
+    {
+       // line.clear();
+        tok.set( in.getLine() );
+        while( tok.more() )
+        {
+            line << tok.next().lower();
+        }
+
+        if (line[0] == "1"){
+            "sza.txt" => FEATURES_FILE;
+        }
+        else if (line[0] == "2"){
+            "yeet.txt" => FEATURES_FILE;
+        }
+        else if (line[0] == "3"){
+            "whitney.txt" => FEATURES_FILE;
+        }
+        else if (line[0] == "4"){
+            "freddie.txt" => FEATURES_FILE;
+        }
+        else if (line[0] == "5"){
+            "iggy.txt" => FEATURES_FILE;
+        }
+        else if (line[0] == "6"){
+            "beyonce.txt" => FEATURES_FILE;
+        }
+        else           
+        {
+            <<< "Invalid input, exiting" >>>;
+            me.exit();
+        }
+    }
+
 
 SndBuf input => FFT fft;
 FeatureCollector combo => blackhole;
@@ -30,26 +83,100 @@ fft =^ RMS rms =^ combo;
 fft =^ MFCC mfcc =^ combo;
 20 => mfcc.numCoeffs;
 10 => mfcc.numFilters;
-
+fft =^ RollOff rolloff =^ combo;
+fft =^ ZeroX zerox =^ combo;
 
 combo.upchuck();
 
+in.prompt( "CHOOSE PITCH PERFECT CLIP:
+            [1]: The Barden Bellas - 1
+            [2]: The Treblemakers - 1
+            [3]: The Barden Bellas - 2
+            [4]: The Treblemakers - 2
+            [5]: The Barden Bellas - 3
+            [6]: The Barden Bellas - 4
+            ") => now;
+    // read
+    while( in.more() )
+    {
+       // line.clear();
+        tok.set( in.getLine() );
+        while( tok.more() )
+        {
+            line << tok.next().lower();
+        }
+
+        if (line[0] == "1"){
+            "data/pp/clip1.wav"=> input.read;
+        }
+        else if (line[0] == "2"){
+            "data/pp/clip2.wav"=> input.read;
+        }
+        else if (line[0] == "3"){
+            "data/pp/clip3.wav"=> input.read;
+        }
+        else if (line[0] == "4"){
+            "data/pp/clip4.wav"=> input.read;
+        }
+        else if (line[0] == "5"){
+            "data/pp/clip5.wav"=> input.read;
+        }
+        else if (line[0] == "6"){
+            "data/pp/clip6.wav"=> input.read;
+        }
+        else           
+        {
+            <<< "Invalid input, exiting" >>>;
+            me.exit();
+        }
+    }
 
 
+fun void keyboardInput()
+{
+    while( true )
+    {
+        // wait on event
+        hi => now;
+
+        // get one or more messages
+        while( hi.recv( msg ) )
+        {
+            // check for action type
+            if( msg.isButtonDown() )
+            {
+                if (msg.which == 82) {
+                    NUM_SOUNDS + 1 => NUM_SOUNDS;
+                    <<< "ADDED SOUND!!! :)", "" >>>;                    
+                }
+            
+            
+            if (msg.which == 81 && NUM_SOUNDS >= 2)
+            {
+                     NUM_SOUNDS - 1 => NUM_SOUNDS;
+                    <<< "REMOVED SOUND :(", "" >>>;
+                
+               
+            }
+        }
+    }
+    }
+}
+
+
+
+spork ~ keyboardInput();
 
 
 //------------------------------------------------------------------------------
 // setting up our synthesized audio input to be analyzed and mosaic'ed
 //------------------------------------------------------------------------------
 // // if we want to hear our audio input
-input => Delay delay => Gain g => dac.left;
+// input => Delay delay => Gain g => dac.left;
 // add artificial delay for time alignment to mosaic output
 // 100::ms => delay.max => delay.delay;
 // scale the volume
-0.5 => g.gain;
-
-// load sound (by default it will start playing from SndBuf)
-"data/pp/clip5.wav"=> input.read;
+// 0.5 => g.gain;
 
 //-----------------------------------------------------------------------------
 // setting analysis parameters -- also should match what was used during extration
@@ -61,7 +188,7 @@ combo.fvals().size() => int NUM_DIMENSIONS;
 
 4096 => fft.size;
 Windowing.hann(fft.size()) => fft.window;
-(fft.size())::samp => dur HOP;
+(fft.size()/1.2)::samp => dur HOP;
 4 => int NUM_FRAMES;
 // how much time to aggregate features for each file
 fft.size()::samp * NUM_FRAMES => dur EXTRACT_TIME;
@@ -70,21 +197,28 @@ fft.size()::samp * NUM_FRAMES => dur EXTRACT_TIME;
 //------------------------------------------------------------------------------
 // unit generator network: for real-time sound synthesis
 //------------------------------------------------------------------------------
-16 => int NUM_VOICES;
-SndBuf buffers[NUM_VOICES]; ADSR envs[NUM_VOICES];
+100 => int NUM_VOICES;
+SndBuf buffers[NUM_VOICES]; ADSR envs[NUM_VOICES]; Pan2 pans[NUM_VOICES]; NRev mixes[NUM_VOICES];
 for( int i; i < NUM_VOICES; i++ )
 {
-    buffers[i] => envs[i] => dac.right;
+    buffers[i] => envs[i] => dac;
     fft.size() => buffers[i].chunks;
-    2 => buffers[i].gain;
-    // Math.random2f(-.75,.75) => pans[i].pan;
+    1 => buffers[i].gain;
+    Math.random2f(-.75,.75) => pans[i].pan;
+    Math.random2f(-.75,.75) => mixes[i].mix;
     envs[i].set( EXTRACT_TIME, EXTRACT_TIME/256, 1, EXTRACT_TIME );
 }
+
+
 
 
 //------------------------------------------------------------------------------
 // load feature data; read important global values like numPoints and numCoeffs
 //------------------------------------------------------------------------------
+
+// CREATE A CLASS/ OR REFACTORING
+
+
 // values to be read from file
 0 => int numPoints; // number of points in data
 0 => int numCoeffs; // number of dimensions in data
@@ -160,6 +294,7 @@ knn.train( inFeatures, uids );
 // used to rotate sound buffers
 0 => int which;
 
+
 //------------------------------------------------------------------------------
 // SYNTHESIS!!
 // this function is meant to be sporked so it can be stacked in time
@@ -192,6 +327,7 @@ fun void synthesize( int uid )
     // endline
     chout <= IO.newline();
 
+
     // open the envelope, overlap add this into the overall audio
     envelope.keyOn();
     // wait
@@ -200,13 +336,14 @@ fun void synthesize( int uid )
     envelope.keyOff();
     // wait
     envelope.releaseTime() => now;
+
 }
 
 
 //------------------------------------------------------------------------------
 // real-time similarity retrieval loop
 //------------------------------------------------------------------------------
-while( true )
+while( input.pos() < input.samples())
 {
     // aggregate features over a period of time
     for( int frame; frame < NUM_FRAMES; frame++ )
@@ -248,9 +385,14 @@ while( true )
     // which should the indices of k nearest points
     //-------------------------------------------------
     knn.search( featureMean, K, knnResult );
+
         
     // SYNTHESIZE THIS
-    spork ~ synthesize( knnResult[Math.random2(0,knnResult.size()-1)] );
+    for (int sound; sound < NUM_SOUNDS; sound++)
+    {
+        spork ~ synthesize( knnResult[Math.random2(0,knnResult.size()-1)] );
+        100::ms => now;
+    }
 }
 //------------------------------------------------------------------------------
 // end of real-time similiarity retrieval loop

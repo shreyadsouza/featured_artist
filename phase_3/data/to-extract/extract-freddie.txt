@@ -1,2 +1,2 @@
-freddie.wav
-silence.wav
+data/to-extract/freddie.wav
+data/to-extract/silence.wav

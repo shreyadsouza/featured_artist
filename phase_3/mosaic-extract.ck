@@ -65,18 +65,17 @@ if( Machine.silent() == false )
 // analysis network -- this determines which feature will be extracted
 // NOTE: see examples/ai/features for examples of different features
 //------------------------------------------------------------------------------
-// audio input into a FFT
+
 SndBuf audioFile => FFT fft;
-// a thing for collecting multiple features into one vector
 FeatureCollector combo => blackhole;
-// add spectral feature: Centroid
 fft =^ Centroid centroid =^ combo;
-// add spectral feature: Flux
 fft =^ Flux flux =^ combo;
-// add spectral feature: RMS
 fft =^ RMS rms =^ combo;
-// add spectral feature: MFCC
 fft =^ MFCC mfcc =^ combo;
+20 => mfcc.numCoeffs;
+10 => mfcc.numFilters;
+fft =^ RollOff rolloff =^ combo;
+fft =^ ZeroX zerox =^ combo;
 
 
 //------------------------------------------------------------------------------
@@ -97,7 +96,7 @@ combo.fvals().size() => int NUM_DIMENSIONS;
 // set window type and size
 Windowing.hann(fft.size()) => fft.window;
 // our hop size (how often to perform analysis)
-(fft.size())::samp => dur HOP;
+(fft.size()*1.5)::samp => dur HOP;
 
 // how many frames to aggregate before averaging?
 4 => int NUM_FRAMES;

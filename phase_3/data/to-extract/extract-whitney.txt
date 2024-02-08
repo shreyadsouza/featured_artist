@@ -1,2 +1,2 @@
-whitney.wav
-silence.wav
+data/to-extract/whitney.wav
+data/to-extract/silence.wav

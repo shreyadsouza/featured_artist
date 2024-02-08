@@ -1,2 +1,2 @@
-beyonce.wav
-silence.wav
+data/to-extract/beyonce.wav
+data/to-extract/silence.wav
